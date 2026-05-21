@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@afm/ai-core": "*",
+    "@afm/analytics": "*",
     "@afm/db": "*",
     "cors": "^2.8.5",
     "express": "^4.21.2",

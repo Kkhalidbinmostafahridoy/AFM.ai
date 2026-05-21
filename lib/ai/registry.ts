@@ -1,5 +1,6 @@
 import type { ProviderId, ProviderStatus } from "@/types/chat";
 import { geminiProvider } from "./providers/gemini";
+import { anthropicProvider } from "./providers/anthropic";
 import { openaiProvider } from "./providers/openai";
 import { deepseekProvider } from "./providers/deepseek";
 import { grokProvider } from "./providers/grok";
@@ -9,6 +10,7 @@ import type { AIProviderAdapter } from "./providers/types";
 
 export const ALL_PROVIDERS: AIProviderAdapter[] = [
   openaiProvider,
+  anthropicProvider,
   deepseekProvider,
   grokProvider,
   geminiProvider,

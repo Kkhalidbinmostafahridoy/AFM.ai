@@ -5,15 +5,18 @@ import { getProvidersHealth, getConfiguredProviders } from "@afm/ai-core";
 export async function GET() {
   try {
     const remote = await afmHealth();
-    if (remote.ok) {
+    if (remote.ok && remote.data.providers?.length) {
       return NextResponse.json({
         source: "afm-server",
         server: getAfmServerUrl(),
-        ...remote.data,
+        ok: true,
+        database: remote.data.database,
+        providers: remote.data.providers,
+        configured: getConfiguredProviders().map((p) => p.id),
       });
     }
   } catch {
-    /* server offline — local fallback */
+    /* server offline */
   }
 
   return NextResponse.json({

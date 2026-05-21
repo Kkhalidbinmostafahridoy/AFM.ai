@@ -74,6 +74,9 @@ export const chatMessageSchema = z.object({
   /** `auto` or `provider:model` e.g. openai:gpt-4o-mini */
   model: z.string().max(120).optional(),
   fusion: z.boolean().optional(),
+  /** chat = standard; swarm/research/debate use multi-agent routes */
+  chatMode: z.enum(["chat", "swarm", "research", "debate", "auto"]).optional(),
+  stream: z.boolean().optional(),
 });
 
 export const swarmChatSchema = z.object({

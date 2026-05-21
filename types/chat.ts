@@ -8,6 +8,7 @@ export interface ChatTurn {
 export type ProviderId =
   | "gemini"
   | "openai"
+  | "anthropic"
   | "deepseek"
   | "grok"
   | "opencode"

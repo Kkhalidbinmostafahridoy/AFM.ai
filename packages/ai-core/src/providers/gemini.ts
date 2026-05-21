@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import type { AIProviderAdapter } from "../types.js";
+import type { AIProviderAdapter } from "../types";
 
 function client() {
   const key =

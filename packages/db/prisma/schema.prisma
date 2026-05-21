@@ -14,6 +14,12 @@ model AfmUser {
   conversations AfmConversation[]
   memory    AfmMemory[]
   workflows AfmWorkflowRun[]
+  sessions  AnalyticsSession[]
+  activities AnalyticsUserActivity[]
+  pageViews AnalyticsPageView[]
+  aiRequests AnalyticsAiRequest[]
+  agentRuns AnalyticsAgentExecution[]
+  analyticsEvents AnalyticsEvent[]
 
   @@map("afm_users")
 }
@@ -70,4 +76,180 @@ model AfmWorkflowRun {
 
   @@index([userId])
   @@map("afm_workflow_runs")
+}
+
+// ─── Enterprise Analytics (AFM.ai Telemetry) ───────────────────────────────
+
+model AnalyticsSession {
+  id              String    @id @default(uuid())
+  userId          String?   @map("user_id")
+  deviceId        String    @map("device_id")
+  tabId           String?   @map("tab_id")
+  startedAt       DateTime  @default(now()) @map("started_at")
+  endedAt         DateTime? @map("ended_at")
+  lastHeartbeatAt DateTime  @default(now()) @map("last_heartbeat_at")
+  totalDurationMs Int       @default(0) @map("total_duration_ms")
+  activeMs        Int       @default(0) @map("active_ms")
+  idleMs          Int       @default(0) @map("idle_ms")
+  aiInteractionMs Int       @default(0) @map("ai_interaction_ms")
+  pageViewMs      Int       @default(0) @map("page_view_ms")
+  workflowMs      Int       @default(0) @map("workflow_ms")
+  websocketMs     Int       @default(0) @map("websocket_ms")
+  workspaceMs     Int       @default(0) @map("workspace_ms")
+  isActive        Boolean   @default(true) @map("is_active")
+  consentGiven    Boolean   @default(false) @map("consent_given")
+  user            AfmUser?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  activities      AnalyticsUserActivity[]
+  pageViews       AnalyticsPageView[]
+
+  @@index([userId])
+  @@index([deviceId])
+  @@index([startedAt])
+  @@map("analytics_sessions")
+}
+
+model AnalyticsUserActivity {
+  id         String   @id @default(uuid())
+  sessionId  String   @map("session_id")
+  userId     String?  @map("user_id")
+  eventType  String   @map("event_type")
+  path       String?
+  durationMs Int?     @map("duration_ms")
+  properties Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+  session    AnalyticsSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user       AfmUser? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId])
+  @@index([userId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("analytics_user_activity")
+}
+
+model AnalyticsPageView {
+  id         String   @id @default(uuid())
+  sessionId  String   @map("session_id")
+  userId     String?  @map("user_id")
+  path       String
+  title      String?
+  durationMs Int      @default(0) @map("duration_ms")
+  enteredAt  DateTime @default(now()) @map("entered_at")
+  exitedAt   DateTime? @map("exited_at")
+  session    AnalyticsSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user       AfmUser? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId])
+  @@index([path])
+  @@map("analytics_page_views")
+}
+
+model AnalyticsAiRequest {
+  id              String    @id @default(uuid())
+  userId          String?   @map("user_id")
+  sessionId       String?   @map("session_id")
+  provider        String?
+  model           String?
+  taskType        String?   @map("task_type")
+  requestAt       DateTime  @default(now()) @map("request_at")
+  responseAt      DateTime? @map("response_at")
+  latencyMs       Int?      @map("latency_ms")
+  streamingMs     Int?      @map("streaming_ms")
+  tokensIn        Int?      @map("tokens_in")
+  tokensOut       Int?      @map("tokens_out")
+  status          String    @default("pending")
+  fallbackUsed    Boolean   @default(false) @map("fallback_used")
+  orchestrationMs Int?      @map("orchestration_ms")
+  user            AfmUser?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([provider])
+  @@index([requestAt])
+  @@map("analytics_ai_requests")
+}
+
+model AnalyticsWorkflowRun {
+  id          String    @id @default(uuid())
+  userId      String?   @map("user_id")
+  workflowId  String    @map("workflow_id")
+  status      String    @default("running")
+  startedAt   DateTime  @default(now()) @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  durationMs  Int?      @map("duration_ms")
+  stepCount   Int       @default(0) @map("step_count")
+
+  @@index([userId])
+  @@index([workflowId])
+  @@map("analytics_workflow_runs")
+}
+
+model AnalyticsAgentExecution {
+  id          String    @id @default(uuid())
+  userId      String?   @map("user_id")
+  agentId     String    @map("agent_id")
+  status      String    @default("running")
+  startedAt   DateTime  @default(now()) @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  durationMs  Int?      @map("duration_ms")
+  toolsUsed   Int       @default(0) @map("tools_used")
+  user        AfmUser?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([agentId])
+  @@map("analytics_agent_executions")
+}
+
+model AnalyticsVideoJob {
+  id          String    @id @default(uuid())
+  userId      String?   @map("user_id")
+  status      String    @default("queued")
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  durationMs  Int?      @map("duration_ms")
+  queueWaitMs Int?      @map("queue_wait_ms")
+  gpuSeconds  Float?    @map("gpu_seconds")
+
+  @@index([userId])
+  @@index([status])
+  @@map("analytics_video_jobs")
+}
+
+model AnalyticsImageJob {
+  id          String    @id @default(uuid())
+  userId      String?   @map("user_id")
+  status      String    @default("queued")
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  durationMs  Int?      @map("duration_ms")
+
+  @@index([userId])
+  @@map("analytics_image_jobs")
+}
+
+model AnalyticsEvent {
+  id         String   @id @default(uuid())
+  userId     String?  @map("user_id")
+  sessionId  String?  @map("session_id")
+  eventType  String   @map("event_type")
+  properties Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+  user       AfmUser? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([eventType])
+  @@index([createdAt])
+  @@index([userId])
+  @@map("analytics_events")
+}
+
+model AnalyticsSystemMetric {
+  id        String   @id @default(uuid())
+  metricKey String   @map("metric_key")
+  value     Float
+  unit      String?
+  tags      Json?
+  recordedAt DateTime @default(now()) @map("recorded_at")
+
+  @@index([metricKey])
+  @@index([recordedAt])
+  @@map("analytics_system_metrics")
 }

@@ -11,6 +11,7 @@ import {
   type AIProviderAdapter,
 } from "@afm/ai-core";
 import { prisma, isDatabaseReady } from "@afm/db";
+import { mountAnalyticsWs, recordServerEvent } from "./analytics.js";
 
 const PORT = Number(process.env.AFM_SERVER_PORT || 4000);
 
@@ -59,6 +60,7 @@ app.post("/v1/chat", async (req, res) => {
       return;
     }
 
+    const t0 = Date.now();
     const result = await orchestrateChat({
       messages: parsed.data.messages,
       fusion: parsed.data.fusion,
@@ -93,9 +95,15 @@ app.post("/v1/chat", async (req, res) => {
       });
     }
 
+    recordServerEvent("AI_RESPONSE", {
+      latencyMs: Date.now() - t0,
+      providers: result.providersUsed,
+      userId: parsed.data.userId,
+    });
     res.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Chat failed";
+    recordServerEvent("API_FAILURE", { route: "/v1/chat", message });
     res.status(502).json({ error: message });
   }
 });
@@ -137,6 +145,7 @@ app.post("/v1/chat/stream", async (req, res) => {
 });
 
 const httpServer = createServer(app);
+mountAnalyticsWs(httpServer);
 const wss = new WebSocketServer({ server: httpServer, path: "/v1/ws/monitor" });
 
 wss.on("connection", (ws) => {

@@ -11,31 +11,54 @@ import { geminiErrorResponse } from "@/lib/gemini/route-errors";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getAfmServerUrl } from "@/lib/gateway/afm-server";
 import { getConfiguredProviders } from "@afm/ai-core";
+import {
+  mergeProviderStatuses,
+  normalizeProvidersFromConfigured,
+  normalizeProvidersFromHealth,
+  getCoreHealthAsProviders,
+  getLocalProviderStatuses,
+  countConfigured,
+} from "@/lib/afm/provider-status";
 
 export const maxDuration = 90;
 
 export async function GET() {
+  const localProviders = getLocalProviderStatuses();
+  const coreProviders = getCoreHealthAsProviders();
+  let providers = mergeProviderStatuses(localProviders, coreProviders);
+  let backend = "local";
+  let fusionAvailable =
+    process.env.CHAT_ENABLE_FUSION !== "0" && countConfigured(providers) >= 2;
+
   const healthRes = await fetch(`${getAfmServerUrl()}/v1/providers`, {
     cache: "no-store",
   }).catch(() => null);
 
   if (healthRes?.ok) {
     const data = await healthRes.json();
-    return NextResponse.json({
-      models: listSelectableModels(),
-      providers: data.health ?? data.configured,
-      fusionAvailable: (data.configured?.length ?? 0) >= 2,
-      backend: "afm-server",
-    });
+    const fromHealth = Array.isArray(data.health)
+      ? normalizeProvidersFromHealth(data.health)
+      : [];
+    const fromConfigured = Array.isArray(data.configured)
+      ? normalizeProvidersFromConfigured(data.configured)
+      : [];
+    providers = mergeProviderStatuses(
+      providers,
+      fromHealth,
+      fromConfigured
+    );
+    fusionAvailable =
+      process.env.CHAT_ENABLE_FUSION !== "0" &&
+      (data.configured?.length ?? countConfigured(providers)) >= 2;
+    backend = "afm-server";
   }
 
   return NextResponse.json({
     models: listSelectableModels(),
-    providers: getProviderStatuses(),
-    fusionAvailable:
-      process.env.CHAT_ENABLE_FUSION !== "0" &&
-      getProviderStatuses().filter((p) => p.configured).length >= 2,
-    backend: "local",
+    providers,
+    configuredCount: countConfigured(providers),
+    fusionAvailable,
+    backend,
   });
 }
 

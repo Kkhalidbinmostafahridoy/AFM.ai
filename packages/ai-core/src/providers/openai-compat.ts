@@ -1,4 +1,4 @@
-import type { ChatTurn } from "../types.js";
+import type { ChatTurn } from "../types";
 
 export async function chatOpenAICompatible(
   config: {

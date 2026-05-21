@@ -1,5 +1,5 @@
-import { ALL_PROVIDERS } from "./providers/registry.js";
-import type { ProviderHealth, ProviderHealthStatus } from "./types.js";
+import { ALL_PROVIDERS } from "./providers/registry";
+import type { ProviderHealth, ProviderHealthStatus } from "./types";
 
 export function getProvidersHealth(): ProviderHealth[] {
   return ALL_PROVIDERS.map((p) => {

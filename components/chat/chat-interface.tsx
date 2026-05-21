@@ -8,6 +8,7 @@ import {
   MicOff,
   Send,
   Trash2,
+  Volume2,
   Zap,
 } from "lucide-react";
 import { AFM_AI_NAME } from "@/lib/constants";
@@ -24,6 +25,8 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
+import { useTrackAI } from "@/hooks/use-track-ai";
+import { useAnalytics } from "@/hooks/use-analytics";
 import type { ChatTurn, ProviderStatus } from "@/types/chat";
 import { cn } from "@/lib/utils";
 
@@ -39,12 +42,22 @@ interface AssistantMeta {
   fusionUsed?: boolean;
 }
 
+type ChatMode = "chat" | "swarm" | "research" | "debate" | "auto";
+
 export function ChatInterface() {
+  const { trackRequest, trackResponse } = useTrackAI();
+  const { trackApiFailure } = useAnalytics();
   const [models, setModels] = useState<ModelOption[]>([]);
   const [providers, setProviders] = useState<ProviderStatus[]>([]);
+  const [configuredCount, setConfiguredCount] = useState(0);
+  const [chatEnabled, setChatEnabled] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const [fusionAvailable, setFusionAvailable] = useState(false);
   const [model, setModel] = useState("auto");
+  const [chatMode, setChatMode] = useState<ChatMode>("chat");
   const [fusion, setFusion] = useState(false);
+  const [useStreaming, setUseStreaming] = useState(true);
+  const [voiceOut, setVoiceOut] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatTurn[]>([]);
   const [metaByIndex, setMetaByIndex] = useState<Record<number, AssistantMeta>>(
@@ -53,29 +66,70 @@ export function ChatInterface() {
   const [loading, setLoading] = useState(false);
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const loadChatStatus = useCallback(async (attempt = 0) => {
+    try {
+      const r = await fetch("/api/chat/status", { cache: "no-store" });
+      if (!r.ok) {
+        if (r.status === 404 && attempt < 4) {
+          await new Promise((resolve) => setTimeout(resolve, 800 * (attempt + 1)));
+          return loadChatStatus(attempt + 1);
+        }
+        setStatusError(`Chat status unavailable (${r.status})`);
+        return;
+      }
+      const data = (await r.json()) as {
+        models?: ModelOption[];
+        providers?: ProviderStatus[];
+        configuredCount?: number;
+        chatEnabled?: boolean;
+        fusionAvailable?: boolean;
+      };
+      setStatusError(null);
+      if (data.models?.length) {
+        setModels(data.models);
+        setModel((prev) =>
+          data.models!.find((m) => m.id === prev) ? prev : data.models![0].id
+        );
+      }
+      if (data.providers) {
+        setProviders(data.providers);
+        const count =
+          data.configuredCount ??
+          data.providers.filter((p) => p.configured).length;
+        setConfiguredCount(count);
+        setChatEnabled(
+          Boolean(
+            data.chatEnabled ??
+              count > 0 ||
+              data.providers.some((p) => p.configured)
+          )
+        );
+      } else {
+        setChatEnabled(Boolean(data.chatEnabled));
+      }
+      setFusionAvailable(Boolean(data.fusionAvailable));
+    } catch {
+      if (attempt < 4) {
+        await new Promise((resolve) => setTimeout(resolve, 800 * (attempt + 1)));
+        return loadChatStatus(attempt + 1);
+      }
+      setStatusError("Could not reach chat API — retrying…");
+    }
+  }, []);
 
   useEffect(() => {
-    fetch("/api/chat")
-      .then((r) => r.json())
-      .then(
-        (data: {
-          models?: ModelOption[];
-          providers?: ProviderStatus[];
-          fusionAvailable?: boolean;
-        }) => {
-          if (data.models?.length) {
-            setModels(data.models);
-            setModel(data.models[0].id);
-          }
-          if (data.providers) setProviders(data.providers);
-          setFusionAvailable(Boolean(data.fusionAvailable));
-        }
-      )
-      .catch(() => undefined);
-  }, []);
+    void loadChatStatus();
+    const retry = setInterval(() => {
+      if (!chatEnabled) void loadChatStatus();
+    }, 12_000);
+    return () => clearInterval(retry);
+  }, [loadChatStatus, chatEnabled]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -84,17 +138,185 @@ export function ChatInterface() {
     });
   }, [messages, loading]);
 
+  const speakText = useCallback(async (text: string) => {
+    if (!text.trim()) return;
+    setSpeaking(true);
+    try {
+      const res = await fetch("/api/chat/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text.slice(0, 2000) }),
+      });
+      const data = await res.json();
+      if (data.audioBase64) {
+        const mime = data.mimeType ?? "audio/wav";
+        audioRef.current?.pause();
+        const audio = new Audio(`data:${mime};base64,${data.audioBase64}`);
+        audioRef.current = audio;
+        await audio.play();
+        return;
+      }
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(data.text ?? text);
+        window.speechSynthesis.speak(u);
+      }
+    } catch {
+      toast({ title: "Voice output failed", variant: "destructive" });
+    } finally {
+      setSpeaking(false);
+    }
+  }, []);
+
+  const appendAssistant = useCallback(
+    (content: string, meta?: AssistantMeta, index?: number) => {
+      setMessages((prev) => [...prev, { role: "assistant", content }]);
+      if (meta && index !== undefined) {
+        setMetaByIndex((prev) => ({ ...prev, [index]: meta }));
+      }
+      if (voiceOut && content) void speakText(content);
+    },
+    [voiceOut, speakText]
+  );
+
+  const sendSwarm = useCallback(
+    async (nextMessages: ChatTurn[], userIndex: number) => {
+      const mode =
+        chatMode === "debate"
+          ? "debate"
+          : chatMode === "research"
+            ? "research"
+            : chatMode === "swarm" || chatMode === "auto"
+              ? "swarm"
+              : "auto";
+      const res = await fetch("/api/afm/swarm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: nextMessages, mode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message ?? data.error ?? "Swarm failed");
+      appendAssistant(data.reply as string, {
+        modelStrategy: `Swarm mode: ${mode}`,
+        providersUsed: data.providersUsed ?? [],
+        fusionUsed: Boolean(data.consensus),
+      }, userIndex + 1);
+    },
+    [chatMode, appendAssistant]
+  );
+
+  const sendStream = useCallback(
+    async (nextMessages: ChatTurn[], userIndex: number) => {
+      const res = await fetch("/api/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: nextMessages,
+          model,
+          fusion: fusion && fusionAvailable,
+          stream: true,
+        }),
+      });
+      if (!res.ok || !res.body) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message ?? err.error ?? "Stream failed");
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let full = "";
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const payload = line.slice(6).trim();
+          if (payload === "[DONE]") continue;
+          try {
+            const ev = JSON.parse(payload) as {
+              type: string;
+              data?: string;
+              reply?: string;
+              meta?: AssistantMeta & { providersUsed?: string[] };
+              message?: string;
+            };
+            if (ev.type === "token" && ev.data) {
+              full += ev.data;
+              setMessages((prev) => {
+                const copy = [...prev];
+                copy[copy.length - 1] = { role: "assistant", content: full };
+                return copy;
+              });
+            } else if (ev.type === "done") {
+              full = ev.reply ?? full;
+              setMessages((prev) => {
+                const copy = [...prev];
+                copy[copy.length - 1] = { role: "assistant", content: full };
+                return copy;
+              });
+              if (ev.meta) {
+                setMetaByIndex((prev) => ({
+                  ...prev,
+                  [userIndex + 1]: {
+                    modelStrategy: ev.meta?.modelStrategy ?? "Stream",
+                    providersUsed: ev.meta?.providersUsed ?? [],
+                    fusionUsed: ev.meta?.fusionUsed,
+                  },
+                }));
+              }
+            } else if (ev.type === "error") {
+              throw new Error(ev.message ?? "Stream error");
+            }
+          } catch {
+            /* skip malformed SSE */
+          }
+        }
+      }
+      if (voiceOut && full) void speakText(full);
+    },
+    [model, fusion, fusionAvailable, voiceOut, speakText]
+  );
+
   const sendMessage = useCallback(async () => {
     const text = input.trim();
-    if (!text || loading) return;
+    if (!text || loading || !chatEnabled) return;
 
     const userTurn: ChatTurn = { role: "user", content: text };
     const nextMessages = [...messages, userTurn];
+    const userIndex = nextMessages.length - 1;
     setMessages(nextMessages);
     setInput("");
     setLoading(true);
 
     try {
+      const t0 = Date.now();
+      trackRequest({ model, taskType: fusion ? "fusion" : chatMode });
+
+      if (chatMode !== "chat") {
+        await sendSwarm(nextMessages, userIndex);
+        trackResponse({ model, status: "success", latencyMs: Date.now() - t0 });
+        return;
+      }
+
+      if (useStreaming) {
+        try {
+          await sendStream(nextMessages, userIndex);
+          trackResponse({
+            model,
+            status: "success",
+            latencyMs: Date.now() - t0,
+          });
+          return;
+        } catch {
+          /* fall through to non-stream */
+        }
+      }
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -107,13 +329,11 @@ export function ChatInterface() {
       const data = await res.json();
 
       if (!res.ok) {
+        trackApiFailure("/api/chat", res.status);
+        trackResponse({ model, status: "failed", latencyMs: Date.now() - t0 });
         toast({
           title: data.error ?? "Chat failed",
-          description:
-            data.message ??
-            (res.status === 503
-              ? "Provider busy — try Auto + Flash Lite or wait 30s."
-              : undefined),
+          description: data.message,
           variant: "destructive",
         });
         setMessages((prev) => prev.slice(0, -1));
@@ -121,26 +341,46 @@ export function ChatInterface() {
         return;
       }
 
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: data.reply as string },
-      ]);
-      setMetaByIndex((prev) => ({
-        ...prev,
-        [nextMessages.length]: {
+      trackResponse({
+        model,
+        latencyMs: Date.now() - t0,
+        provider: (data.providersUsed as string[])?.[0],
+        status: "success",
+      });
+      appendAssistant(
+        data.reply as string,
+        {
           modelStrategy: data.modelStrategy ?? "",
           providersUsed: data.providersUsed ?? [],
           fusionUsed: data.fusionUsed,
         },
-      }));
-    } catch {
-      toast({ title: "Network error", variant: "destructive" });
+        userIndex + 1
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Network error";
+      toast({ title: msg, variant: "destructive" });
       setMessages((prev) => prev.slice(0, -1));
       setInput(text);
     } finally {
       setLoading(false);
     }
-  }, [input, loading, messages, model, fusion, fusionAvailable]);
+  }, [
+    input,
+    loading,
+    messages,
+    model,
+    fusion,
+    fusionAvailable,
+    chatEnabled,
+    chatMode,
+    useStreaming,
+    trackRequest,
+    trackResponse,
+    trackApiFailure,
+    sendSwarm,
+    sendStream,
+    appendAssistant,
+  ]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -184,10 +424,7 @@ export function ChatInterface() {
         stream.getTracks().forEach((t) => t.stop());
         const blob = new Blob(chunksRef.current, { type: mimeType });
         if (blob.size < 500) {
-          toast({
-            title: "Recording too short",
-            variant: "destructive",
-          });
+          toast({ title: "Recording too short", variant: "destructive" });
           return;
         }
         setTranscribing(true);
@@ -207,9 +444,8 @@ export function ChatInterface() {
             });
             return;
           }
-          setInput((prev) =>
-            prev ? `${prev.trim()} ${data.transcript}` : data.transcript
-          );
+          const transcript = String(data.transcript ?? "").trim();
+          setInput((prev) => (prev ? `${prev.trim()} ${transcript}` : transcript));
         } catch {
           toast({ title: "Voice transcription failed", variant: "destructive" });
         } finally {
@@ -222,7 +458,7 @@ export function ChatInterface() {
     } catch {
       toast({
         title: "Microphone access denied",
-        description: "Allow microphone access to send voice messages.",
+        description: "Allow microphone access in browser settings.",
         variant: "destructive",
       });
     }
@@ -233,8 +469,6 @@ export function ChatInterface() {
     else void startRecording();
   };
 
-  const configuredCount = providers.filter((p) => p.configured).length;
-
   return (
     <div className="space-y-4">
       <Card className="glass-card border-violet-500/10">
@@ -242,6 +476,15 @@ export function ChatInterface() {
           <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
             <Zap className="h-3 w-3 text-violet-500" />
             Connected providers ({configuredCount})
+            {!chatEnabled && (
+              <span className="text-amber-600 ml-2">
+                — add GEMINI_API_KEY or OPENAI_API_KEY in .env.local and restart
+                dev server
+              </span>
+            )}
+            {statusError && (
+              <span className="text-amber-600 ml-2">— {statusError}</span>
+            )}
           </p>
           <div className="flex flex-wrap gap-2">
             {providers.map((p) => (
@@ -269,8 +512,26 @@ export function ChatInterface() {
             {AFM_AI_NAME} Chat
           </CardTitle>
           <div className="flex flex-wrap items-end gap-3">
-            <div className="space-y-1 min-w-[220px]">
-              <Label className="text-xs">Routing</Label>
+            <div className="space-y-1 min-w-[160px]">
+              <Label className="text-xs">Mode</Label>
+              <Select
+                value={chatMode}
+                onValueChange={(v) => setChatMode(v as ChatMode)}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="chat">Standard chat</SelectItem>
+                  <SelectItem value="auto">Auto AI (swarm)</SelectItem>
+                  <SelectItem value="swarm">Swarm AI</SelectItem>
+                  <SelectItem value="research">Research mode</SelectItem>
+                  <SelectItem value="debate">Debate mode</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1 min-w-[200px]">
+              <Label className="text-xs">Model routing</Label>
               <Select value={model} onValueChange={setModel}>
                 <SelectTrigger className="h-9">
                   <SelectValue placeholder="Auto orchestrator" />
@@ -284,18 +545,32 @@ export function ChatInterface() {
                 </SelectContent>
               </Select>
             </div>
-            {fusionAvailable && (
+            {fusionAvailable && chatMode === "chat" && (
               <div className="flex items-center gap-2 pb-1">
-                <Switch
-                  id="fusion"
-                  checked={fusion}
-                  onCheckedChange={setFusion}
-                />
+                <Switch id="fusion" checked={fusion} onCheckedChange={setFusion} />
                 <Label htmlFor="fusion" className="text-xs cursor-pointer">
-                  Multi-model fusion
+                  Fusion
                 </Label>
               </div>
             )}
+            {chatMode === "chat" && (
+              <div className="flex items-center gap-2 pb-1">
+                <Switch
+                  id="stream"
+                  checked={useStreaming}
+                  onCheckedChange={setUseStreaming}
+                />
+                <Label htmlFor="stream" className="text-xs cursor-pointer">
+                  Stream
+                </Label>
+              </div>
+            )}
+            <div className="flex items-center gap-2 pb-1">
+              <Switch id="voiceOut" checked={voiceOut} onCheckedChange={setVoiceOut} />
+              <Label htmlFor="voiceOut" className="text-xs cursor-pointer">
+                Voice reply
+              </Label>
+            </div>
             <Button
               type="button"
               variant="outline"
@@ -319,9 +594,9 @@ export function ChatInterface() {
           >
             {!messages.length && (
               <p className="text-sm text-muted-foreground text-center py-10">
-                Ask anything or use the mic for a voice message. <strong>Auto</strong>{" "}
-                routes to OpenAI, DeepSeek, Grok, Gemini, OpenCode, or Cloud AI —
-                answers use the ✅ Final Answer / References format.
+                Ask anything or use the mic. Enable <strong>Stream</strong> for
+                live tokens, <strong>Research / Debate</strong> for multi-agent
+                modes, and <strong>Voice reply</strong> for spoken answers.
               </p>
             )}
             {messages.map((m, i) => (
@@ -335,18 +610,29 @@ export function ChatInterface() {
                   )}
                 >
                   {m.content}
+                  {m.role === "assistant" && m.content && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 ml-2 inline-flex align-middle"
+                      onClick={() => speakText(m.content)}
+                      disabled={speaking}
+                    >
+                      <Volume2 className="h-3 w-3" />
+                    </Button>
+                  )}
                 </div>
                 {m.role === "assistant" && metaByIndex[i] && (
                   <details className="mr-auto max-w-[92%] text-xs text-muted-foreground">
                     <summary className="cursor-pointer hover:text-foreground">
-                      Model strategy used
+                      Model strategy
                     </summary>
                     <pre className="mt-1 whitespace-pre-wrap rounded-lg bg-muted/40 p-2 border text-[11px]">
                       {metaByIndex[i].modelStrategy}
                       {metaByIndex[i].providersUsed?.length
                         ? `\n\nAPI: ${metaByIndex[i].providersUsed.join(", ")}`
                         : ""}
-                      {metaByIndex[i].fusionUsed ? "\n\n(Fusion merge)" : ""}
                     </pre>
                   </details>
                 )}
@@ -355,7 +641,7 @@ export function ChatInterface() {
             {loading && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Routing to best model…
+                {chatMode === "chat" ? "Generating…" : `Running ${chatMode}…`}
               </div>
             )}
           </div>
@@ -367,10 +653,8 @@ export function ChatInterface() {
               size="icon"
               className="shrink-0 h-11 w-11"
               onClick={toggleRecording}
-              disabled={
-                loading || transcribing || configuredCount === 0
-              }
-              title={recording ? "Stop recording" : "Voice message"}
+              disabled={loading || transcribing || !chatEnabled}
+              title={recording ? "Stop recording" : "Voice input"}
             >
               {transcribing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -385,17 +669,17 @@ export function ChatInterface() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onKeyDown}
               placeholder={
-                transcribing
-                  ? "Transcribing voice…"
-                  : recording
-                    ? "Recording… tap mic to stop"
-                    : "Message… (Enter to send)"
+                !chatEnabled
+                  ? "Configure API keys in .env.local to enable chat…"
+                  : transcribing
+                    ? "Transcribing voice…"
+                    : recording
+                      ? "Recording… tap mic to stop"
+                      : "Message… (Enter to send)"
               }
               rows={2}
               className="resize-none min-h-[52px]"
-              disabled={
-                loading || transcribing || configuredCount === 0
-              }
+              disabled={loading || transcribing || !chatEnabled}
             />
             <Button
               type="button"
@@ -408,7 +692,7 @@ export function ChatInterface() {
                 transcribing ||
                 recording ||
                 !input.trim() ||
-                configuredCount === 0
+                !chatEnabled
               }
             >
               <Send className="h-4 w-4" />

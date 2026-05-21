@@ -1,10 +1,12 @@
 /**
- * AFM background workers (Phase 2)
- * Video render, batch images, scheduled workflows → BullMQ + Redis
+ * AFM background workers
+ * Video render, batch images, scheduled workflows, analytics aggregation
  */
-console.log("[afm-workers] Placeholder — connect REDIS_URL and BullMQ for heavy jobs");
-console.log("[afm-workers] Video generation must NOT block API routes");
+import { startAnalyticsWorker } from "./analytics-worker.js";
 
-setInterval(() => {
-  /* heartbeat for dev */
-}, 60_000);
+console.log("[afm-workers] Starting analytics aggregation worker…");
+startAnalyticsWorker().catch((err) => {
+  console.error("[afm-workers] Analytics worker failed", err);
+});
+
+console.log("[afm-workers] Connect REDIS_URL for distributed queues (BullMQ Phase 2)");

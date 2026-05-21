@@ -1,4 +1,4 @@
-import type { AIProviderAdapter } from "../types.js";
+import type { AIProviderAdapter } from "../types";
 
 /** Anthropic Messages API (Claude) */
 export const anthropicProvider: AIProviderAdapter = {

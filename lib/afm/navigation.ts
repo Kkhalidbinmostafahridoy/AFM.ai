@@ -24,6 +24,7 @@ import {
   Cpu,
   GraduationCap,
   Monitor,
+  BarChart3,
 } from "lucide-react";
 
 export interface NavLink {
@@ -55,7 +56,7 @@ export const AFM_NAV_SECTIONS: NavSection[] = [
     items: [
       { href: "/dashboard/chat", label: "AI Chat", icon: MessageSquare },
       { href: "/dashboard/swarm", label: "AI Swarm", icon: Users, badge: "Live" },
-      { href: "/dashboard/research", label: "AI Research", icon: Search, badge: "Soon" },
+      { href: "/dashboard/research", label: "AI Research", icon: Search, badge: "Live" },
     ],
   },
   {
@@ -76,7 +77,7 @@ export const AFM_NAV_SECTIONS: NavSection[] = [
     label: "Automation",
     items: [
       { href: "/dashboard/automation/workflows", label: "Workflow Automation", icon: Zap },
-      { href: "/dashboard/agents", label: "AI Agents", icon: Bot, badge: "Soon" },
+      { href: "/dashboard/agents", label: "AI Agents", icon: Bot, badge: "Live" },
       { href: "/dashboard/memory/projects", label: "Memory Engine", icon: Brain },
     ],
   },
@@ -84,8 +85,8 @@ export const AFM_NAV_SECTIONS: NavSection[] = [
     id: "builders",
     label: "Builders",
     items: [
-      { href: "/dashboard/builders/website", label: "AI Website Builder", icon: Globe, badge: "Soon" },
-      { href: "/dashboard/builders/business", label: "AI Business Builder", icon: Briefcase, badge: "Soon" },
+      { href: "/dashboard/builders/website", label: "AI Website Builder", icon: Globe, badge: "Live" },
+      { href: "/dashboard/builders/business", label: "AI Business Builder", icon: Briefcase, badge: "Live" },
     ],
   },
   {
@@ -93,6 +94,7 @@ export const AFM_NAV_SECTIONS: NavSection[] = [
     label: "Platform",
     items: [
       { href: "/dashboard/integrations", label: "Integrations", icon: Plug },
+      { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, badge: "Live" },
       { href: "/dashboard/monitor", label: "Live AI Monitor", icon: Activity },
       { href: "/dashboard/history", label: "History", icon: History },
       { href: "/dashboard/settings", label: "Settings", icon: Settings },
@@ -125,6 +127,8 @@ export const INTEGRATION_CHANNELS = [
   { id: "slack", name: "Slack", status: "coming_soon" as const },
   { id: "discord", name: "Discord", status: "coming_soon" as const },
   { id: "facebook", name: "Facebook", status: "coming_soon" as const },
+  { id: "twitter", name: "X (Twitter)", status: "coming_soon" as const },
+  { id: "linkedin", name: "LinkedIn", status: "coming_soon" as const },
 ];
 
 export const AI_PERSONALITIES = [

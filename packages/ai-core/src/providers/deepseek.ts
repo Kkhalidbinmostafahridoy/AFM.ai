@@ -1,5 +1,5 @@
-import { chatOpenAICompatible } from "./openai-compat.js";
-import type { AIProviderAdapter } from "../types.js";
+import { chatOpenAICompatible } from "./openai-compat";
+import type { AIProviderAdapter } from "../types";
 
 export const deepseekProvider: AIProviderAdapter = {
   id: "deepseek",

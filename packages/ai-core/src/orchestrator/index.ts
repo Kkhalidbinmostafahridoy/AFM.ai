@@ -1,7 +1,7 @@
-import type { ChatTurn, OrchestratorResult, ProviderId } from "../types.js";
-import { getConfiguredProviders, getProvider } from "../providers/registry.js";
-import { classifyTask, pickProviderChain } from "./router.js";
-import { streamOpenAI } from "../providers/openai.js";
+import type { ChatTurn, OrchestratorResult, ProviderId } from "../types";
+import { getConfiguredProviders, getProvider } from "../providers/registry";
+import { classifyTask, pickProviderChain } from "./router";
+import { streamOpenAI } from "../providers/openai";
 
 const SYSTEM = `You are AFM.ai, an AI Operating System assistant. Provide accurate, structured Markdown answers.`;
 

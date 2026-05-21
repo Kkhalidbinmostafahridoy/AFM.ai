@@ -1,9 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { AfmModulePage } from "@/components/afm/module-page";
+import { AfmPageShell } from "@/components/afm/afm-page-shell";
+import { WebsiteBuilderClient } from "@/components/afm/website-builder-client";
 import { AFM_MODULES } from "@/lib/afm/modules";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
 
 const mod = AFM_MODULES.find((m) => m.id === "website")!;
 
@@ -12,13 +11,12 @@ export default async function WebsiteBuilderPage() {
   if (!userId) redirect("/sign-in");
 
   return (
-    <AfmModulePage module={mod}>
-      <p className="text-sm text-muted-foreground mb-4">
-        Adaptive Workspace switches to code editor, API generator, and deploy panel when you say &quot;Build website&quot;.
-      </p>
-      <Button variant="gradient" asChild>
-        <Link href="/dashboard/workspace">Open Adaptive Workspace</Link>
-      </Button>
-    </AfmModulePage>
+    <AfmPageShell
+      title={mod.label}
+      description="Generate full-stack websites from a prompt — Next.js, APIs, Prisma, Tailwind."
+      maxWidth="max-w-6xl"
+    >
+      <WebsiteBuilderClient />
+    </AfmPageShell>
   );
 }

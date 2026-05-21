@@ -4,12 +4,36 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { Menu, X, Zap, ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { AFM_NAV_SECTIONS } from "@/lib/afm/navigation";
 import { AFM_AI_NAME } from "@/lib/constants";
+
+function SidebarFooter() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) {
+    return (
+      <div
+        className="p-4 border-t flex items-center justify-between gap-2"
+        aria-hidden
+      >
+        <div className="h-8 w-8 rounded-full bg-muted" />
+        <div className="h-9 w-9 rounded-md bg-muted" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 border-t flex items-center justify-between">
+      <UserButton afterSignOutUrl="/" />
+      <ThemeToggle />
+    </div>
+  );
+}
 
 export function DashboardSidebar() {
   const pathname = usePathname();
@@ -88,10 +112,7 @@ export function DashboardSidebar() {
         })}
       </nav>
 
-      <div className="p-4 border-t flex items-center justify-between">
-        <UserButton afterSignOutUrl="/" />
-        <ThemeToggle />
-      </div>
+      <SidebarFooter />
     </>
   );
 
