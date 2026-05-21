@@ -1,2 +1,2 @@
-import type { ProviderHealth } from "./types";
+import type { ProviderHealth } from "./types.js";
 export declare function getProvidersHealth(): ProviderHealth[];

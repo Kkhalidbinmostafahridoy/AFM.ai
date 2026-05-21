@@ -1,3 +1,3 @@
-import type { AIProviderAdapter } from "../types";
+import type { AIProviderAdapter } from "../types.js";
 export declare const openaiProvider: AIProviderAdapter;
 export declare function streamOpenAI(params: Parameters<AIProviderAdapter["chat"]>[0]): AsyncGenerator<string, any, any>;

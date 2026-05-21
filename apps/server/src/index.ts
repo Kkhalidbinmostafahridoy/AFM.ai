@@ -8,6 +8,7 @@ import {
   streamChat,
   getProvidersHealth,
   getConfiguredProviders,
+  type AIProviderAdapter,
 } from "@afm/ai-core";
 import { prisma, isDatabaseReady } from "@afm/db";
 
@@ -29,7 +30,7 @@ app.get("/health", async (_req, res) => {
 
 app.get("/v1/providers", (_req, res) => {
   res.json({
-    configured: getConfiguredProviders().map((p) => ({
+    configured: getConfiguredProviders().map((p: AIProviderAdapter) => ({
       id: p.id,
       label: p.label,
       models: p.listModels(),

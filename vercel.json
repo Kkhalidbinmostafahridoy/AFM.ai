@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
-  "buildCommand": "npm run build",
+  "buildCommand": "npm run build -w @afm/ai-core && next build",
   "devCommand": "npm run dev:web",
   "installCommand": "npm ci --include-workspace-root"
 }

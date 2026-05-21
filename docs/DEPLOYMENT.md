@@ -27,7 +27,11 @@ Without `--include-workspace-root`, npm may install ~176 workspace-only packages
 
 ## Build
 
-Default build: `npm run build` (compiles `@afm/ai-core`, then `next build`).
+Vercel build (see `vercel.json`): `npm run build -w @afm/ai-core && next build`
+
+This compiles the shared package and the Next.js app only. It does **not** build `apps/server` (the Express API is deployed separately if needed).
+
+Local full check: `npm run build` (same as above). To compile the API server: `npm run build -w @afm/server`.
 
 ## Environment variables
 

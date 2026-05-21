@@ -1,4 +1,4 @@
-import { chatOpenAICompatible, streamOpenAICompatible } from "./openai-compat";
+import { chatOpenAICompatible, streamOpenAICompatible } from "./openai-compat.js";
 export const openaiProvider = {
     id: "openai",
     label: "GPT",

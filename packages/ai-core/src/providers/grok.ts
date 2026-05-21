@@ -1,5 +1,5 @@
-import { chatOpenAICompatible } from "./openai-compat";
-import type { AIProviderAdapter } from "../types";
+import { chatOpenAICompatible } from "./openai-compat.js";
+import type { AIProviderAdapter } from "../types.js";
 
 export const grokProvider: AIProviderAdapter = {
   id: "grok",

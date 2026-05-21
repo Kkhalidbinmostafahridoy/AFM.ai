@@ -22,31 +22,6 @@ export async function generateImageFromPrompt(params: {
   const useEnhancePrompt = params.enhancePrompt === true;
   let lastError: unknown;
 
-  // #region agent log
-  fetch("http://127.0.0.1:7938/ingest/c46fc04b-713c-4d5a-a34c-ae4b25273b0a", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Debug-Session-Id": "5be219",
-    },
-    body: JSON.stringify({
-      sessionId: "5be219",
-      runId: "pre-fix",
-      hypothesisId: "A",
-      location: "lib/gemini/generate-image.ts:generateImageFromPrompt:entry",
-      message: "generateImageFromPrompt called",
-      data: {
-        models,
-        aspectRatio: params.aspectRatio ?? "9:16",
-        enhancePromptParam: params.enhancePrompt,
-        useEnhancePrompt,
-        promptLen: params.prompt.length,
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-
   for (const model of models) {
     try {
       const bytes = await withGeminiRetry(async () => {
@@ -69,46 +44,9 @@ export async function generateImageFromPrompt(params: {
         if (!b) throw new Error(`No image returned from ${model}`);
         return b;
       });
-      // #region agent log
-      fetch("http://127.0.0.1:7938/ingest/c46fc04b-713c-4d5a-a34c-ae4b25273b0a", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Debug-Session-Id": "5be219",
-        },
-        body: JSON.stringify({
-          sessionId: "5be219",
-          runId: "pre-fix",
-          hypothesisId: "B",
-          location: "lib/gemini/generate-image.ts:generateImageFromPrompt:success",
-          message: "model succeeded",
-          data: { model, useEnhancePrompt },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
       return bytes;
     } catch (err) {
       lastError = err;
-      const errMsg = err instanceof Error ? err.message : String(err);
-      // #region agent log
-      fetch("http://127.0.0.1:7938/ingest/c46fc04b-713c-4d5a-a34c-ae4b25273b0a", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Debug-Session-Id": "5be219",
-        },
-        body: JSON.stringify({
-          sessionId: "5be219",
-          runId: "pre-fix",
-          hypothesisId: "A",
-          location: "lib/gemini/generate-image.ts:generateImageFromPrompt:modelFail",
-          message: "model failed",
-          data: { model, useEnhancePrompt, errMsg: errMsg.slice(0, 300) },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
       console.warn(`generateImageFromPrompt: ${model} failed`, err);
       await sleep(1500);
     }
@@ -188,31 +126,6 @@ export async function editImageFromPrompt(params: {
       return bytes;
     });
   } catch (err) {
-    // #region agent log
-    fetch("http://127.0.0.1:7938/ingest/c46fc04b-713c-4d5a-a34c-ae4b25273b0a", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "5be219",
-      },
-      body: JSON.stringify({
-        sessionId: "5be219",
-        runId: "pre-fix",
-        hypothesisId: "E",
-        location: "lib/gemini/generate-image.ts:editImageFromPrompt:fallback",
-        message: "editImage failed, trying generateContent",
-        data: {
-          errMsg: (err instanceof Error ? err.message : String(err)).slice(
-            0,
-            300
-          ),
-          fallbackModel: GEMINI_IMAGE_EDIT_CHAT_MODEL,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-
     if (!isEnterpriseOnlyError(err)) throw err;
     return withGeminiRetry(() => editImageViaGenerateContent(params));
   }

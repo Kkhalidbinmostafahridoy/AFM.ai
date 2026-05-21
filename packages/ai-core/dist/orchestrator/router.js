@@ -1,4 +1,4 @@
-import { getConfiguredProviders } from "../providers/registry";
+import { getConfiguredProviders } from "../providers/registry.js";
 const ROUTING = {
     coding: ["anthropic", "openai", "deepseek", "gemini"],
     reasoning: ["deepseek", "openai", "anthropic", "gemini"],

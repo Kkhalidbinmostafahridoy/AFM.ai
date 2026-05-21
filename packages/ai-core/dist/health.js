@@ -1,4 +1,4 @@
-import { ALL_PROVIDERS } from "./providers/registry";
+import { ALL_PROVIDERS } from "./providers/registry.js";
 export function getProvidersHealth() {
     return ALL_PROVIDERS.map((p) => {
         let status = "missing";

@@ -1,2 +1,2 @@
-import type { AIProviderAdapter } from "../types";
+import type { AIProviderAdapter } from "../types.js";
 export declare const grokProvider: AIProviderAdapter;

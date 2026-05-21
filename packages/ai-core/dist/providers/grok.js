@@ -1,4 +1,4 @@
-import { chatOpenAICompatible } from "./openai-compat";
+import { chatOpenAICompatible } from "./openai-compat.js";
 export const grokProvider = {
     id: "grok",
     label: "Grok",

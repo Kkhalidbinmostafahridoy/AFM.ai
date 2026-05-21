@@ -1,5 +1,5 @@
-import type { ProviderId, TaskCategory } from "../types";
-import { getConfiguredProviders } from "../providers/registry";
+import type { ProviderId, TaskCategory } from "../types.js";
+import { getConfiguredProviders } from "../providers/registry.js";
 
 const ROUTING: Record<TaskCategory, ProviderId[]> = {
   coding: ["anthropic", "openai", "deepseek", "gemini"],

@@ -1,8 +1,8 @@
-import { openaiProvider } from "./openai";
-import { geminiProvider } from "./gemini";
-import { deepseekProvider } from "./deepseek";
-import { grokProvider } from "./grok";
-import { anthropicProvider } from "./anthropic";
+import { openaiProvider } from "./openai.js";
+import { geminiProvider } from "./gemini.js";
+import { deepseekProvider } from "./deepseek.js";
+import { grokProvider } from "./grok.js";
+import { anthropicProvider } from "./anthropic.js";
 const opencodeProvider = {
     id: "opencode",
     label: "OpenCode",
@@ -10,7 +10,7 @@ const opencodeProvider = {
     defaultModel: () => process.env.OPENCODE_MODEL?.trim() || "default",
     listModels: () => [{ id: "default", label: "default" }],
     async chat(params) {
-        const { chatOpenAICompatible } = await import("./openai-compat");
+        const { chatOpenAICompatible } = await import("./openai-compat.js");
         const r = await chatOpenAICompatible({
             apiKey: process.env.OPENCODE_API_KEY.trim(),
             baseUrl: process.env.OPENCODE_BASE_URL.trim(),
@@ -27,7 +27,7 @@ const cloudProvider = {
     defaultModel: () => process.env.CLOUD_AI_MODEL?.trim() || "default",
     listModels: () => [{ id: "default", label: "default" }],
     async chat(params) {
-        const { chatOpenAICompatible } = await import("./openai-compat");
+        const { chatOpenAICompatible } = await import("./openai-compat.js");
         const r = await chatOpenAICompatible({
             apiKey: process.env.CLOUD_AI_API_KEY.trim(),
             baseUrl: process.env.CLOUD_AI_BASE_URL.trim(),

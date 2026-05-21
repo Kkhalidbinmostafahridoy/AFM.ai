@@ -1,4 +1,4 @@
-import type { ChatTurn, OrchestratorResult } from "../types";
+import type { ChatTurn, OrchestratorResult } from "../types.js";
 export declare function orchestrateChat(params: {
     messages: ChatTurn[];
     fusion?: boolean;

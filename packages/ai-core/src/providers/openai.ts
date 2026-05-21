@@ -1,5 +1,5 @@
-import { chatOpenAICompatible, streamOpenAICompatible } from "./openai-compat";
-import type { AIProviderAdapter } from "../types";
+import { chatOpenAICompatible, streamOpenAICompatible } from "./openai-compat.js";
+import type { AIProviderAdapter } from "../types.js";
 
 export const openaiProvider: AIProviderAdapter = {
   id: "openai",

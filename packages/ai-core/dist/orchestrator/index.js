@@ -1,6 +1,6 @@
-import { getConfiguredProviders, getProvider } from "../providers/registry";
-import { classifyTask, pickProviderChain } from "./router";
-import { streamOpenAI } from "../providers/openai";
+import { getConfiguredProviders, getProvider } from "../providers/registry.js";
+import { classifyTask, pickProviderChain } from "./router.js";
+import { streamOpenAI } from "../providers/openai.js";
 const SYSTEM = `You are AFM.ai, an AI Operating System assistant. Provide accurate, structured Markdown answers.`;
 const FUSION = `Merge draft answers into one best answer. Remove contradictions.`;
 function lastUser(messages) {
