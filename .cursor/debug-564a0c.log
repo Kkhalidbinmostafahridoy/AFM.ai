@@ -1,2 +1,0 @@
-{"sessionId":"564a0c","runId":"pre-fix","hypothesisId":"A-D","location":"business-builder-client.tsx:deploy","message":"deploy client payload","data":{"businessNameLen":13,"stackKeys":["frontend","backend","database","css"],"filesCount":6},"timestamp":1779367229453}
-{"sessionId":"564a0c","runId":"pre-fix","hypothesisId":"A-E","location":"deploy/route.ts:POST","message":"deploy validation","data":{"ok":true,"businessNameLen":13,"stackKeys":["frontend","backend","database","css"],"filesCount":6,"zodIssues":null},"timestamp":1779367230927}
