@@ -10,6 +10,7 @@
     "dev": "concurrently -n web,api -c blue,magenta \"npm run dev:web\" \"npm run dev:server\"",
     "dev:web": "next dev --turbopack",
     "dev:server": "npm run dev -w @afm/server",
+    "prebuild": "node -e \"const p=require('./package.json');if(!p.dependencies?.next){console.error('ERROR: next must be in root package.json. Set Vercel Root Directory to the repo root (empty), not a workspace subfolder.');process.exit(1)}\"",
     "build": "npm run build -w @afm/ai-core && next build",
     "start": "next start",
     "lint": "next lint",

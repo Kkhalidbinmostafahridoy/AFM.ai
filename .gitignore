@@ -1,5 +1,11 @@
 # dependencies
 /node_modules
+
+# local install / debug copies (never commit)
+.vercel-sim/
+.vercel-test-install/
+.test-db-install/
+.test-server-install/
 /.pnp
 .pnp.*
 .yarn/*
