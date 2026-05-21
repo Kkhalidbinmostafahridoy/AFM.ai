@@ -1,0 +1,16 @@
+{
+  "name": "@afm/workers",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "@afm/ai-core": "*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.3",
+    "typescript": "^5"
+  }
+}

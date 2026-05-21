@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AfmUser {
+  id        String   @id
+  email     String
+  createdAt DateTime @default(now()) @map("created_at")
+  conversations AfmConversation[]
+  memory    AfmMemory[]
+  workflows AfmWorkflowRun[]
+
+  @@map("afm_users")
+}
+
+model AfmConversation {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  title     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  user      AfmUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  AfmMessage[]
+
+  @@index([userId])
+  @@map("afm_conversations")
+}
+
+model AfmMessage {
+  id             String   @id @default(uuid())
+  conversationId String   @map("conversation_id")
+  role           String
+  content        String
+  provider       String?
+  model          String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  conversation   AfmConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("afm_messages")
+}
+
+model AfmMemory {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  category  String
+  key       String
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+  user      AfmUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category, key])
+  @@map("afm_memory")
+}
+
+model AfmWorkflowRun {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  workflowId String   @map("workflow_id")
+  status     String   @default("pending")
+  input      Json?
+  output     Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+  user       AfmUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("afm_workflow_runs")
+}
