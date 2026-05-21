@@ -2,11 +2,14 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { deployWebsiteProject } from "@/lib/builders/deploy";
-import type { WebsiteBuildResult } from "@/lib/builders/website-generator";
+import {
+  normalizeWebsiteProject,
+  type WebsiteBuildResult,
+} from "@/lib/builders/website-generator";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({
-  businessName: z.string().min(2).max(120),
+  businessName: z.string().trim().min(2).max(120),
   project: z.object({
     prompt: z.string(),
     stack: z.object({
@@ -34,9 +37,31 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
-  const parsed = schema.safeParse(await req.json());
+  const body = await req.json();
+  const normalized = {
+    businessName:
+      typeof body?.businessName === "string" ? body.businessName : "",
+    project:
+      body?.project && typeof body.project === "object"
+        ? normalizeWebsiteProject(body.project)
+        : body?.project,
+  };
+  const parsed = schema.safeParse(normalized);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid input", details: parsed.error.flatten() },
+      { status: 400 }
+    );
+  }
+
+  if (!parsed.data.project.files.length) {
+    return NextResponse.json(
+      {
+        error: "Nothing to deploy",
+        message: "Build the website first — no project files were generated.",
+      },
+      { status: 400 }
+    );
   }
 
   const deployment = deployWebsiteProject({

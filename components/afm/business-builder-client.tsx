@@ -8,7 +8,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import type { WebsiteBuildResult } from "@/lib/builders/website-generator";
+import {
+  normalizeWebsiteProject,
+  type WebsiteBuildResult,
+} from "@/lib/builders/website-generator";
+import { formatDeployValidationError } from "@/lib/builders/deploy-errors";
 import type { DeployResult } from "@/lib/builders/deploy";
 
 export function BusinessBuilderClient() {
@@ -40,10 +44,11 @@ export function BusinessBuilderClient() {
         });
         return;
       }
-      setProject(data as WebsiteBuildResult);
+      const normalized = normalizeWebsiteProject(data);
+      setProject(normalized);
       toast({
         title: "Website generated",
-        description: `${data.files?.length ?? 0} files ready to deploy`,
+        description: `${normalized.files.length} files ready to deploy`,
       });
     } catch {
       toast({ title: "Network error", variant: "destructive" });
@@ -54,17 +59,41 @@ export function BusinessBuilderClient() {
 
   const deploy = async () => {
     if (!project || deploying) return;
+
+    const name = businessName.trim();
+    if (name.length < 2) {
+      toast({
+        title: "Business name too short",
+        description: "Enter at least 2 characters before deploying.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!project.files.length) {
+      toast({
+        title: "Nothing to deploy",
+        description: "Build the website first — no files were generated.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setDeploying(true);
     try {
+      const payload = {
+        businessName: name,
+        project: normalizeWebsiteProject(project),
+      };
       const res = await fetch("/api/builders/business/deploy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ businessName, project }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) {
         toast({
           title: data.error ?? "Deploy failed",
+          description: formatDeployValidationError(data),
           variant: "destructive",
         });
         return;

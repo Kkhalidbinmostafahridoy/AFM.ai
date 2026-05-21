@@ -2,7 +2,10 @@
  * AFM analytics aggregation worker — drains Redis queue, rolls up metrics.
  */
 import { buildDashboardMetrics, globalMetricsBuffer } from "@afm/analytics";
-import { initRedisQueue, drainAnalyticsQueue } from "../../../lib/analytics/redis-queue.js";
+import {
+  initRedisQueue,
+  drainAnalyticsQueue,
+} from "../../../lib/analytics/redis-queue-node.js";
 
 const AGGREGATE_INTERVAL_MS = 60_000;
 

@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
-import { Menu, X, Zap, ChevronDown } from "lucide-react";
+import { Menu, X, ChevronDown } from "lucide-react";
+import { AfmBrandLogo } from "@/components/afm/afm-brand-logo";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { AFM_NAV_SECTIONS } from "@/lib/afm/navigation";
-import { AFM_AI_NAME } from "@/lib/constants";
 
 function SidebarFooter() {
   const [mounted, setMounted] = useState(false);
@@ -46,16 +46,8 @@ export function DashboardSidebar() {
 
   const NavContent = () => (
     <>
-      <div className="flex items-center gap-2 px-4 py-6">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600">
-          <Zap className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <span className="font-bold text-lg block leading-tight">{AFM_AI_NAME}</span>
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-            AI OS
-          </span>
-        </div>
+      <div className="px-3 py-5">
+        <AfmBrandLogo href="/" onClick={() => setMobileOpen(false)} />
       </div>
 
       <nav className="flex-1 px-2 overflow-y-auto space-y-4 pb-4">
